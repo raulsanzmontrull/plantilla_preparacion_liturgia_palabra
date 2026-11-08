@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "liturgia-palabra"
+version = "1.0.0"
+description = "Genera plantillas Excel para preparar la Liturgia de la Palabra a partir del vocabulario de León Dufour."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+keywords = ["liturgia", "biblia", "excel", "leon-dufour", "neocatecumenal"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
+  "Topic :: Religion",
+  "Topic :: Office/Business :: Office Suites",
+]
+
+[project.scripts]
+liturgia-palabra = "liturgia.cli:main"
+
+[tool.setuptools]
+packages = ["liturgia"]
