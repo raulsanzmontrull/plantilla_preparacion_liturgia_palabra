@@ -2,12 +2,14 @@ import contextlib
 import io
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
 from liturgia.cli import default_output_name, main
 
 FIXTURES = Path(__file__).parent / "fixtures"
+NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
 def run_main(args):
@@ -16,6 +18,18 @@ def run_main(args):
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
         code = main(args)
     return code, stdout.getvalue(), stderr.getvalue()
+
+
+def cells_by_reference(path):
+    with zipfile.ZipFile(path) as archive:
+        sheet = archive.read("xl/worksheets/sheet1.xml")
+    root = ET.fromstring(sheet)
+    cells = {}
+    for cell in root.findall(".//m:c", NS):
+        ref = cell.attrib["r"]
+        text = cell.findtext(".//m:t", default="", namespaces=NS)
+        cells[ref] = text
+    return cells
 
 
 class DefaultOutputNameTests(unittest.TestCase):
@@ -44,6 +58,33 @@ class MainTests(unittest.TestCase):
             self.assertTrue(output.exists())
             with zipfile.ZipFile(output) as archive:
                 self.assertIn("xl/worksheets/sheet1.xml", archive.namelist())
+
+    def test_ordenar_flag_sorts_citations_alphabetically(self):
+        html = (
+            '<div data-panel="citas">'
+            "<button data-citas='{\"historicos\":[\"Gen 2,9\",\"Ex 15,27\"]}'>"
+            "</button></div>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp) / "entrada.html"
+            fixture.write_text(html, encoding="utf-8")
+            output = Path(tmp) / "salida.xlsx"
+            code, _, stderr = run_main(
+                [
+                    "arbol",
+                    "--html",
+                    str(fixture),
+                    "-o",
+                    str(output),
+                    "--ordenar",
+                ]
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(stderr, "")
+            cells = cells_by_reference(output)
+
+        self.assertEqual(cells["A2"], "Ex 15,27")
+        self.assertEqual(cells["A3"], "Gen 2,9")
 
     def test_returns_error_for_missing_local_html(self):
         with tempfile.TemporaryDirectory() as tmp:

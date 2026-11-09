@@ -7,6 +7,7 @@ directamente las partes mínimas necesarias y se usan cadenas en línea
 
 from __future__ import annotations
 
+import unicodedata
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Union
@@ -201,7 +202,19 @@ def _worksheet_xml(
     )
 
 
-def _liturgia_rows(categories: Dict[str, List[str]]) -> List[List[Optional[str]]]:
+def _sort_key(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value.casefold())
+    return "".join(char for char in decomposed if not unicodedata.combining(char))
+
+
+def _liturgia_rows(
+    categories: Dict[str, List[str]], sort_alphabetically: bool = False
+) -> List[List[Optional[str]]]:
+    if sort_alphabetically:
+        categories = {
+            category: sorted(values, key=_sort_key)
+            for category, values in categories.items()
+        }
     longest = max((len(values) for values in categories.values()), default=0)
     rows: List[List[Optional[str]]] = [
         [COLUMN_HEADERS[column] for column in range(1, 13)]
@@ -227,9 +240,11 @@ def _equipo_rows() -> List[List[Optional[str]]]:
     return rows
 
 
-def _sheet_xml(categories: Dict[str, List[str]]) -> str:
+def _sheet_xml(
+    categories: Dict[str, List[str]], sort_alphabetically: bool = False
+) -> str:
     return _worksheet_xml(
-        _liturgia_rows(categories),
+        _liturgia_rows(categories, sort_alphabetically),
         header_rows={1},
         freeze_rows=1,
     )
@@ -247,6 +262,7 @@ def _equipo_sheet_xml() -> str:
 def write_xlsx(
     categories: Dict[str, List[str]],
     target: Union[str, Path, "zipfile.ZipFile"],
+    sort_alphabetically: bool = False,
 ) -> None:
     parts = {
         "[Content_Types].xml": CONTENT_TYPES,
@@ -254,7 +270,7 @@ def write_xlsx(
         "xl/workbook.xml": WORKBOOK,
         "xl/_rels/workbook.xml.rels": WORKBOOK_RELS,
         "xl/styles.xml": STYLES,
-        "xl/worksheets/sheet1.xml": _sheet_xml(categories),
+        "xl/worksheets/sheet1.xml": _sheet_xml(categories, sort_alphabetically),
         "xl/worksheets/sheet2.xml": _equipo_sheet_xml(),
     }
 
@@ -268,5 +284,9 @@ def write_xlsx(
             archive.writestr(name, content)
 
 
-def build_workbook(categories: Dict[str, List[str]], path: Union[str, Path]) -> None:
-    write_xlsx(categories, path)
+def build_workbook(
+    categories: Dict[str, List[str]],
+    path: Union[str, Path],
+    sort_alphabetically: bool = False,
+) -> None:
+    write_xlsx(categories, path, sort_alphabetically)

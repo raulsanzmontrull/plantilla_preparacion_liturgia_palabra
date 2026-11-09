@@ -51,6 +51,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Tiempo máximo de descarga en segundos (por defecto: 30).",
     )
     parser.add_argument(
+        "-a",
+        "--ordenar",
+        action="store_true",
+        help=(
+            "Ordena alfabéticamente las citas de cada columna "
+            "(por defecto se conserva el orden de aparición)."
+        ),
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -80,7 +89,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     output = Path(args.salida) if args.salida else Path(default_output_name(args.entrada))
     try:
-        build_workbook(categories, output)
+        build_workbook(
+            categories,
+            output,
+            sort_alphabetically=args.ordenar,
+        )
     except OSError as error:
         print(f"Error al escribir {output}: {error}", file=sys.stderr)
         return 1

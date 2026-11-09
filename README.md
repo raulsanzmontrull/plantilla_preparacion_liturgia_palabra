@@ -25,13 +25,22 @@ python3 -m liturgia "Acción de gracias" -o accion_de_gracias.xlsx
 
 ```text
 uso: liturgia-palabra [-h] [-o SALIDA] [--html HTML] [--timeout TIMEOUT]
-                      [--version] entrada
+                      [-a] [--version] entrada
 
   entrada              Palabra a consultar o URL completa de leon-dufour.com
   -o, --salida         Ruta del archivo .xlsx de salida
   --html               Usa un archivo HTML local en lugar de descargar la página
   --timeout            Tiempo máximo de descarga en segundos (por defecto: 30)
+  -a, --ordenar        Ordena alfabéticamente las citas de cada columna
+                       (por defecto se conserva el orden de aparición)
   --version            Muestra la versión de la herramienta
+```
+
+Para ordenar las citas de cada columna alfabéticamente en lugar de mantener el
+orden de aparición en la página:
+
+```bash
+python3 -m liturgia "Árbol" --ordenar
 ```
 
 El argumento `--html` resulta útil para trabajar sin conexión o para probar la
@@ -125,7 +134,9 @@ Las tres primeras filas quedan fijas al desplazarse.
 - **Solapamientos parciales**: se unifican. Por ejemplo, `Mt 24,30-33` y
   `Mt 24,32-35` pasan a ser `Mt 24,30-35`.
 - **Orden**: se respeta el orden de aparición en la página. La cita unificada
-  ocupa la posición de la primera cita que la genera.
+  ocupa la posición de la primera cita que la genera. Con `--ordenar`, las citas
+  de cada columna se ordenan alfabéticamente (sin distinguir mayúsculas ni
+  acentos).
 - **Marcas de paralelos**: se conservan tal cual aparecen en la web (por
   ejemplo, `Mt 7,16-20 p`).
 

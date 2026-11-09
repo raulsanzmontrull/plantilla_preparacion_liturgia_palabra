@@ -70,6 +70,41 @@ class BuildWorkbookTests(unittest.TestCase):
         self.assertEqual(cells["J2"], "Mt 24,30-35")
         self.assertEqual(cells["J3"], "Mt 24,36")
 
+    def test_preserves_citation_order_by_default(self):
+        categories = {
+            "Históricos": ["Gen 3,1", "Ex 1,1"],
+            "Profetas": ["Os 2,1", "Is 1,1"],
+            "Cartas": [],
+            "Evangelios": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "salida.xlsx"
+            build_workbook(categories, path)
+            cells = cells_by_reference(read_sheet(path))
+
+        self.assertEqual(cells["A2"], "Gen 3,1")
+        self.assertEqual(cells["A3"], "Ex 1,1")
+        self.assertEqual(cells["D2"], "Os 2,1")
+        self.assertEqual(cells["D3"], "Is 1,1")
+
+    def test_sorts_citations_alphabetically_when_requested(self):
+        categories = {
+            "Históricos": ["Gen 3,1", "Ex 1,1", "Génesis 1,1"],
+            "Profetas": ["Os 2,1", "is 1,1"],
+            "Cartas": [],
+            "Evangelios": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "salida.xlsx"
+            build_workbook(categories, path, sort_alphabetically=True)
+            cells = cells_by_reference(read_sheet(path))
+
+        self.assertEqual(cells["A2"], "Ex 1,1")
+        self.assertEqual(cells["A3"], "Gen 3,1")
+        self.assertEqual(cells["A4"], "Génesis 1,1")
+        self.assertEqual(cells["D2"], "is 1,1")
+        self.assertEqual(cells["D3"], "Os 2,1")
+
     def test_personal_and_total_columns_have_headers(self):
         categories = {
             "Históricos": ["Gen 1,11s"],
