@@ -24,17 +24,20 @@ python3 -m liturgia "Acción de gracias" -o accion_de_gracias.xlsx
 ### Opciones
 
 ```text
-uso: liturgia-palabra [-h] [-o SALIDA] [--html HTML] [--timeout TIMEOUT]
-                      [-a] [--pdf] [--version] entrada
+uso: liturgia-palabra [-h] [-o SALIDA] [--todas] [--carpeta CARPETA]
+                      [--html HTML] [--timeout TIMEOUT] [-a] [--pdf]
+                      [--version] [entrada]
 
   entrada              Palabra a consultar o URL completa de leon-dufour.com
   -o, --salida         Ruta del archivo .xlsx de salida
+  --todas              Genera los documentos de todas las palabras del vocabulario
+  --carpeta            Carpeta de salida para --todas (por defecto: salida)
   --html               Usa un archivo HTML local en lugar de descargar la página
   --timeout            Tiempo máximo de descarga en segundos (por defecto: 30)
   -a, --ordenar        Ordena alfabéticamente las citas de cada columna
                        (por defecto se conserva el orden de aparición)
   --pdf                Exporta también el documento a PDF con el mismo nombre
-                       que el .xlsx
+                       que el .xlsx. Con --todas, genera únicamente PDFs
   --version            Muestra la versión de la herramienta
 ```
 
@@ -62,6 +65,27 @@ python3 -m liturgia "Árbol" --pdf
 
 El PDF incluye el título `PALABRA: Árbol`, la tabla de citas de la primera hoja
 y, debajo, la tabla de la pestaña **Equipo**. También respeta `--ordenar`.
+
+### Generar todas las palabras del vocabulario
+
+Con `--todas` se descarga el índice del vocabulario y se genera un documento por
+cada palabra. La carpeta de destino se indica con `--carpeta` (por defecto,
+`salida`):
+
+```bash
+python3 -m liturgia --todas --carpeta documentos
+```
+
+Por defecto se generan archivos `.xlsx`. Si se añade `--pdf`, se generan
+únicamente archivos `.pdf`:
+
+```bash
+python3 -m liturgia --todas --pdf --carpeta documentos_pdf
+```
+
+Los nombres de archivo usan el identificador de cada palabra (por ejemplo,
+`accion_de_gracias.xlsx`). Si alguna palabra falla, se muestra el error, se
+continúa con las demás y el comando termina con código de salida 1.
 
 ## Instalación como comando
 
@@ -188,6 +212,8 @@ Las tres primeras filas quedan fijas al desplazarse.
 5. Filtra los libros excluidos y aplica las reglas de solapamiento.
 6. Escribe el `.xlsx` directamente, sin dependencias externas y, si se indica
    `--pdf`, genera también el PDF con las dos tablas.
+7. Con `--todas`, repite los pasos anteriores para cada enlace
+   `/palabra/<slug>` encontrado en el índice del vocabulario.
 
 ## Tests
 
@@ -199,7 +225,7 @@ python3 -m unittest discover -s tests -v
 
 La suite cubre el catálogo de libros, el análisis de citas, las reglas de
 solapamiento, la extracción del HTML, la generación del Excel y del PDF, y la
-CLI.
+CLI, incluida la generación masiva con `--todas`.
 
 ## Estructura
 
@@ -208,7 +234,7 @@ liturgia/
   books.py       Catálogo de libros, abreviaturas y exclusiones
   citations.py   Análisis, unión y deduplicación de citas
   parser.py      Extracción de citas del HTML
-  fetch.py       Descarga y construcción de URLs
+  fetch.py       Descarga, construcción de URLs y listado del vocabulario
   excel.py       Escritura del .xlsx sin dependencias
   pdf.py         Generación del PDF sin dependencias
   cli.py         Interfaz de línea de comandos

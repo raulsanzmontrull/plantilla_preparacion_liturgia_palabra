@@ -10,7 +10,14 @@ from typing import Optional, Sequence
 
 from . import __version__, books
 from .excel import build_workbook
-from .fetch import FetchError, build_url, fetch_html, read_local_html, slugify
+from .fetch import (
+    FetchError,
+    build_url,
+    fetch_html,
+    fetch_words,
+    read_local_html,
+    slugify,
+)
 from .parser import extract_citations
 from .pdf import build_pdf
 
@@ -43,12 +50,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "entrada",
+        nargs="?",
         help="Palabra a consultar (por ejemplo, 'Árbol') o URL completa.",
     )
     parser.add_argument(
         "-o",
         "--salida",
         help="Ruta del archivo .xlsx de salida. Por defecto se usa el nombre de la palabra.",
+    )
+    parser.add_argument(
+        "--todas",
+        action="store_true",
+        help="Genera los documentos de todas las palabras del vocabulario.",
+    )
+    parser.add_argument(
+        "--carpeta",
+        default="salida",
+        help="Carpeta de salida para --todas (por defecto: salida).",
     )
     parser.add_argument(
         "--html",
@@ -73,7 +91,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--pdf",
         action="store_true",
         help=(
-            "Exporta también el documento a PDF con el mismo nombre que el .xlsx."
+            "Exporta también el documento a PDF con el mismo nombre que el .xlsx. "
+            "Con --todas, genera únicamente PDFs."
         ),
     )
     parser.add_argument(
@@ -84,10 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
+def _generate_single(args) -> int:
     try:
         if args.html:
             html = read_local_html(args.html)
@@ -133,3 +149,84 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for category in books.CATEGORIES:
         print(f"  {category}: {len(categories[category])} citas")
     return 0
+
+
+def _generate_all(args) -> int:
+    folder = Path(args.carpeta)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        print(f"Error al crear {folder}: {error}", file=sys.stderr)
+        return 1
+
+    try:
+        words = fetch_words(timeout=args.timeout)
+    except FetchError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    if not words:
+        print("Error: no se encontraron palabras en el vocabulario.", file=sys.stderr)
+        return 1
+
+    failures = 0
+    total = len(words)
+    for index, (slug, name) in enumerate(words, start=1):
+        safe_slug = slugify(slug) or f"palabra_{index}"
+        print(f"[{index}/{total}] {name}")
+        try:
+            html = fetch_html(build_url(slug), timeout=args.timeout)
+        except FetchError as error:
+            print(f"  Error: {error}", file=sys.stderr)
+            failures += 1
+            continue
+
+        categories = extract_citations(html)
+        if not any(categories.values()):
+            print(
+                "  Aviso: no se encontraron citas.",
+                file=sys.stderr,
+            )
+
+        try:
+            if args.pdf:
+                build_pdf(
+                    categories,
+                    folder / f"{safe_slug}.pdf",
+                    name,
+                    sort_alphabetically=args.ordenar,
+                )
+            else:
+                build_workbook(
+                    categories,
+                    folder / f"{safe_slug}.xlsx",
+                    sort_alphabetically=args.ordenar,
+                )
+        except OSError as error:
+            print(f"  Error al escribir {safe_slug}: {error}", file=sys.stderr)
+            failures += 1
+
+    document_type = "PDF" if args.pdf else "Excel"
+    print(
+        f"Generados {total - failures} de {total} {document_type} en {folder}"
+    )
+    return 1 if failures else 0
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.todas:
+        if args.entrada:
+            parser.error("No se puede indicar una palabra junto con --todas.")
+        if args.html:
+            parser.error("--html no se puede usar junto con --todas.")
+        if args.salida:
+            parser.error("--salida no se puede usar con --todas; usa --carpeta.")
+        return _generate_all(args)
+
+    if not args.entrada:
+        parser.error("Debes indicar una palabra o URL, o usar --todas.")
+
+    return _generate_single(args)

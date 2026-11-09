@@ -5,8 +5,10 @@ import unittest
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from liturgia.cli import default_output_name, display_word, main
+from liturgia.fetch import FetchError
 
 FIXTURES = Path(__file__).parent / "fixtures"
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
@@ -18,6 +20,14 @@ def run_main(args):
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
         code = main(args)
     return code, stdout.getvalue(), stderr.getvalue()
+
+
+def word_page(citation):
+    return (
+        '<div data-panel="citas">'
+        '<button data-citas=\'{"historicos":["%s"]}\'>' % citation
+        + "</button></div>"
+    )
 
 
 def cells_by_reference(path):
@@ -113,6 +123,84 @@ class MainTests(unittest.TestCase):
             content = pdf_output.read_bytes()
 
         self.assertIn(b"PALABRA: \\301rbol", content)
+
+    def test_todas_generates_one_xlsx_per_word(self):
+        words = [("arbol", "Árbol"), ("accion_de_gracias", "Acción de gracias")]
+        pages = {
+            "arbol": word_page("Gen 1,1"),
+            "accion_de_gracias": word_page("Ex 2,2"),
+        }
+
+        def fake_fetch_html(url, timeout=30.0):
+            return pages[url.rsplit("/", 1)[-1]]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "documentos"
+            with patch("liturgia.cli.fetch_words", return_value=words), patch(
+                "liturgia.cli.fetch_html", side_effect=fake_fetch_html
+            ):
+                code, stdout, stderr = run_main(
+                    ["--todas", "--carpeta", str(folder)]
+                )
+
+            self.assertEqual(code, 0)
+            self.assertEqual(stderr, "")
+            self.assertTrue((folder / "arbol.xlsx").exists())
+            self.assertTrue((folder / "accion_de_gracias.xlsx").exists())
+            self.assertFalse((folder / "arbol.pdf").exists())
+            self.assertIn("Generados 2 de 2 Excel", stdout)
+
+    def test_todas_with_pdf_generates_only_pdfs(self):
+        words = [("arbol", "Árbol"), ("accion_de_gracias", "Acción de gracias")]
+        pages = {
+            "arbol": word_page("Gen 1,1"),
+            "accion_de_gracias": word_page("Ex 2,2"),
+        }
+
+        def fake_fetch_html(url, timeout=30.0):
+            return pages[url.rsplit("/", 1)[-1]]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "documentos"
+            with patch("liturgia.cli.fetch_words", return_value=words), patch(
+                "liturgia.cli.fetch_html", side_effect=fake_fetch_html
+            ):
+                code, stdout, stderr = run_main(
+                    ["--todas", "--pdf", "--carpeta", str(folder)]
+                )
+
+            self.assertEqual(code, 0)
+            self.assertEqual(stderr, "")
+            self.assertTrue((folder / "arbol.pdf").exists())
+            self.assertTrue((folder / "accion_de_gracias.pdf").exists())
+            self.assertFalse((folder / "arbol.xlsx").exists())
+            self.assertIn("Generados 2 de 2 PDF", stdout)
+            content = (folder / "arbol.pdf").read_bytes()
+
+        self.assertIn(b"PALABRA: \\301rbol", content)
+
+    def test_todas_reports_partial_failures(self):
+        words = [("arbol", "Árbol"), ("falla", "Falla")]
+
+        def fake_fetch_html(url, timeout=30.0):
+            if url.endswith("/falla"):
+                raise FetchError("sin conexión")
+            return word_page("Gen 1,1")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "documentos"
+            with patch("liturgia.cli.fetch_words", return_value=words), patch(
+                "liturgia.cli.fetch_html", side_effect=fake_fetch_html
+            ):
+                code, stdout, stderr = run_main(
+                    ["--todas", "--carpeta", str(folder)]
+                )
+
+            self.assertEqual(code, 1)
+            self.assertIn("sin conexión", stderr)
+            self.assertIn("Generados 1 de 2 Excel", stdout)
+            self.assertTrue((folder / "arbol.xlsx").exists())
+            self.assertFalse((folder / "falla.xlsx").exists())
 
     def test_returns_error_for_missing_local_html(self):
         with tempfile.TemporaryDirectory() as tmp:

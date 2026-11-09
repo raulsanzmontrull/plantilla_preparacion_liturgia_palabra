@@ -1,6 +1,6 @@
 import unittest
 
-from liturgia.fetch import build_url, slugify
+from liturgia.fetch import build_url, extract_words, slugify
 
 
 class SlugifyTests(unittest.TestCase):
@@ -14,6 +14,48 @@ class SlugifyTests(unittest.TestCase):
 
     def test_removes_punctuation(self):
         self.assertEqual(slugify("¿Quién?"), "quien")
+
+
+class ExtractWordsTests(unittest.TestCase):
+    def test_extracts_word_links_in_order(self):
+        html = """
+        <a href="/palabra/arbol">Árbol</a>
+        <a href="https://leon-dufour.com/palabra/accion_de_gracias">
+            Acción de gracias
+        </a>
+        <a href="/info">Información</a>
+        <a href="/palabra/arbol">Árbol repetido</a>
+        """
+        self.assertEqual(
+            extract_words(html),
+            [
+                ("arbol", "Árbol"),
+                ("accion_de_gracias", "Acción de gracias"),
+            ],
+        )
+
+    def test_removes_citation_count_from_name(self):
+        html = (
+            '<a href="/palabra/abraham">'
+            "<span>Abraham</span><span>71 citas</span></a>"
+            '<a href="/palabra/iglesia">'
+            "<span>Iglesia</span><span>1 cita</span></a>"
+        )
+        self.assertEqual(
+            extract_words(html),
+            [("abraham", "Abraham"), ("iglesia", "Iglesia")],
+        )
+
+    def test_accepts_relative_word_links(self):
+        html = '<a href="palabra/iglesia">Iglesia</a>'
+        self.assertEqual(extract_words(html), [("iglesia", "Iglesia")])
+
+    def test_uses_slug_when_link_has_no_text(self):
+        html = '<a href="/palabra/bien_y_mal"></a>'
+        self.assertEqual(extract_words(html), [("bien_y_mal", "bien y mal")])
+
+    def test_returns_empty_list_without_word_links(self):
+        self.assertEqual(extract_words("<p>Sin enlaces</p>"), [])
 
 
 class BuildUrlTests(unittest.TestCase):
