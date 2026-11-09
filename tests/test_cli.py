@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from liturgia.cli import default_output_name, main
+from liturgia.cli import default_output_name, display_word, main
 
 FIXTURES = Path(__file__).parent / "fixtures"
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
@@ -41,6 +41,17 @@ class DefaultOutputNameTests(unittest.TestCase):
         self.assertEqual(
             default_output_name("https://leon-dufour.com/palabra/accion_de_gracias"),
             "accion_de_gracias.xlsx",
+        )
+
+
+class DisplayWordTests(unittest.TestCase):
+    def test_keeps_word_as_given(self):
+        self.assertEqual(display_word("Árbol"), "Árbol")
+
+    def test_extracts_word_from_url(self):
+        self.assertEqual(
+            display_word("https://leon-dufour.com/palabra/accion_de_gracias"),
+            "accion de gracias",
         )
 
 
@@ -85,6 +96,23 @@ class MainTests(unittest.TestCase):
 
         self.assertEqual(cells["A2"], "Ex 15,27")
         self.assertEqual(cells["A3"], "Gen 2,9")
+
+    def test_pdf_flag_generates_pdf_next_to_xlsx(self):
+        fixture = FIXTURES / "arbol.html"
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "arbol.xlsx"
+            code, stdout, stderr = run_main(
+                ["Árbol", "--html", str(fixture), "-o", str(output), "--pdf"]
+            )
+            pdf_output = output.with_suffix(".pdf")
+            self.assertEqual(code, 0)
+            self.assertEqual(stderr, "")
+            self.assertTrue(output.exists())
+            self.assertTrue(pdf_output.exists())
+            self.assertIn("PDF generado", stdout)
+            content = pdf_output.read_bytes()
+
+        self.assertIn(b"PALABRA: \\301rbol", content)
 
     def test_returns_error_for_missing_local_html(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -12,6 +12,7 @@ from . import __version__, books
 from .excel import build_workbook
 from .fetch import FetchError, build_url, fetch_html, read_local_html, slugify
 from .parser import extract_citations
+from .pdf import build_pdf
 
 
 def default_output_name(entrada: str) -> str:
@@ -21,6 +22,15 @@ def default_output_name(entrada: str) -> str:
         value = urllib.parse.unquote(path.rsplit("/", 1)[-1]) or "liturgia"
     name = slugify(value) or "liturgia"
     return f"{name}.xlsx"
+
+
+def display_word(entrada: str) -> str:
+    value = entrada.strip()
+    if value.lower().startswith(("http://", "https://")):
+        path = urllib.parse.urlparse(value).path.rstrip("/")
+        value = urllib.parse.unquote(path.rsplit("/", 1)[-1])
+        value = value.replace("_", " ")
+    return value or "liturgia"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -57,6 +67,13 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Ordena alfabéticamente las citas de cada columna "
             "(por defecto se conserva el orden de aparición)."
+        ),
+    )
+    parser.add_argument(
+        "--pdf",
+        action="store_true",
+        help=(
+            "Exporta también el documento a PDF con el mismo nombre que el .xlsx."
         ),
     )
     parser.add_argument(
@@ -97,6 +114,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except OSError as error:
         print(f"Error al escribir {output}: {error}", file=sys.stderr)
         return 1
+
+    if args.pdf:
+        pdf_output = output.with_suffix(".pdf")
+        try:
+            build_pdf(
+                categories,
+                pdf_output,
+                display_word(args.entrada),
+                sort_alphabetically=args.ordenar,
+            )
+        except OSError as error:
+            print(f"Error al escribir {pdf_output}: {error}", file=sys.stderr)
+            return 1
+        print(f"PDF generado: {pdf_output}")
 
     print(f"Plantilla generada: {output}")
     for category in books.CATEGORIES:

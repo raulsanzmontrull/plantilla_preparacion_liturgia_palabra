@@ -46,6 +46,35 @@ class BuildWorkbookTests(unittest.TestCase):
                     if name.endswith(".xml") or name.endswith(".rels"):
                         ET.fromstring(archive.read(name))
 
+    def test_cells_use_printable_borders(self):
+        categories = {
+            "Históricos": ["Gen 1,11s"],
+            "Profetas": [],
+            "Cartas": [],
+            "Evangelios": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "salida.xlsx"
+            build_workbook(categories, path)
+            with zipfile.ZipFile(path) as archive:
+                styles = ET.fromstring(archive.read("xl/styles.xml"))
+                sheet = archive.read("xl/worksheets/sheet1.xml").decode("utf-8")
+
+        borders = styles.findall(".//m:borders/m:border", NS)
+        self.assertEqual(len(borders), 2)
+        for side in ["left", "right", "top", "bottom"]:
+            self.assertEqual(
+                borders[1].find(f"m:{side}", NS).attrib["style"], "thin"
+            )
+
+        cell_xfs = styles.findall(".//m:cellXfs/m:xf", NS)
+        self.assertEqual(cell_xfs[1].attrib["borderId"], "1")
+        self.assertEqual(cell_xfs[2].attrib["borderId"], "1")
+
+        cells = cells_by_reference(sheet)
+        self.assertIn("B2", cells)
+        self.assertIn("C2", cells)
+
     def test_writes_headers_and_citations_in_expected_columns(self):
         categories = {
             "Históricos": ["Gen 1,11s", "Gen 3,22ss"],

@@ -25,7 +25,7 @@ python3 -m liturgia "Acción de gracias" -o accion_de_gracias.xlsx
 
 ```text
 uso: liturgia-palabra [-h] [-o SALIDA] [--html HTML] [--timeout TIMEOUT]
-                      [-a] [--version] entrada
+                      [-a] [--pdf] [--version] entrada
 
   entrada              Palabra a consultar o URL completa de leon-dufour.com
   -o, --salida         Ruta del archivo .xlsx de salida
@@ -33,6 +33,8 @@ uso: liturgia-palabra [-h] [-o SALIDA] [--html HTML] [--timeout TIMEOUT]
   --timeout            Tiempo máximo de descarga en segundos (por defecto: 30)
   -a, --ordenar        Ordena alfabéticamente las citas de cada columna
                        (por defecto se conserva el orden de aparición)
+  --pdf                Exporta también el documento a PDF con el mismo nombre
+                       que el .xlsx
   --version            Muestra la versión de la herramienta
 ```
 
@@ -49,6 +51,17 @@ herramienta con una página guardada:
 ```bash
 python3 -m liturgia arbol --html tests/fixtures/arbol.html -o arbol.xlsx
 ```
+
+### Exportación a PDF
+
+Con `--pdf` se genera, junto al `.xlsx`, un PDF con el mismo nombre base:
+
+```bash
+python3 -m liturgia "Árbol" --pdf
+```
+
+El PDF incluye el título `PALABRA: Árbol`, la tabla de citas de la primera hoja
+y, debajo, la tabla de la pestaña **Equipo**. También respeta `--ordenar`.
 
 ## Instalación como comando
 
@@ -88,9 +101,11 @@ GitHub:
 1. Abre la pestaña **Actions** del repositorio.
 2. Selecciona el workflow **generate-excel**.
 3. Pulsa **Run workflow**, escribe la palabra o URL en `entrada` y marca
-   `ordenar` si quieres que las citas se ordenen alfabéticamente.
+   `ordenar` si quieres que las citas se ordenen alfabéticamente. Marca `pdf`
+   si además quieres el documento en PDF.
 4. Al terminar la ejecución, descarga el artifact **liturgia-excel**.
-5. Descomprime el archivo: dentro estará el `.xlsx` generado.
+5. Descomprime el archivo: dentro estarán el `.xlsx` y, si lo pediste, el
+   `.pdf`.
 
 Los artifacts se conservan durante 30 días. Para lanzar un workflow manualmente
 hace falta tener permisos de escritura sobre el repositorio.
@@ -129,7 +144,8 @@ artifacts es necesario tener una cuenta de GitHub e iniciar sesión.
 
 Los anchos de columna se ajustan automáticamente al contenido más largo,
 incluidos los encabezados. Las columnas `P` y `T` quedan estrechas porque solo
-contienen votos. La primera fila queda fija al desplazarse.
+contienen votos. La primera fila queda fija al desplazarse. Todas las celdas de
+las tablas tienen bordes finos, de modo que se imprimen correctamente.
 
 ### Pestaña «Equipo»
 
@@ -170,7 +186,8 @@ Las tres primeras filas quedan fijas al desplazarse.
    citas por categorías; si no está disponible, se leen los atributos
    `data-cita` y se clasifican por libro.
 5. Filtra los libros excluidos y aplica las reglas de solapamiento.
-6. Escribe el `.xlsx` directamente, sin dependencias externas.
+6. Escribe el `.xlsx` directamente, sin dependencias externas y, si se indica
+   `--pdf`, genera también el PDF con las dos tablas.
 
 ## Tests
 
@@ -181,7 +198,8 @@ python3 -m unittest discover -s tests -v
 ```
 
 La suite cubre el catálogo de libros, el análisis de citas, las reglas de
-solapamiento, la extracción del HTML, la generación del Excel y la CLI.
+solapamiento, la extracción del HTML, la generación del Excel y del PDF, y la
+CLI.
 
 ## Estructura
 
@@ -192,6 +210,7 @@ liturgia/
   parser.py      Extracción de citas del HTML
   fetch.py       Descarga y construcción de URLs
   excel.py       Escritura del .xlsx sin dependencias
+  pdf.py         Generación del PDF sin dependencias
   cli.py         Interfaz de línea de comandos
 tests/           Tests unitarios y fixture HTML
 packaging/       Punto de entrada para PyInstaller

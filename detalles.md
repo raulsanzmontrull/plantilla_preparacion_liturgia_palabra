@@ -32,6 +32,12 @@ Se debe de generar como documento en formato excel con las siguientes columnas:
 - Columna vacía sin título: sirve para poner la votación personal.
 - Columna vacía sin título: para incluir la suma de las votaciones.
 
+## Exportación a PDF
+De forma opcional, el documento se puede exportar también a PDF. El PDF debe incluir:
+- Un título con el formato `PALABRA: PALABRA_ESCOGIDA`.
+- La tabla con las citas de la primera pestaña del Excel.
+- Debajo, la tabla de la pestaña «Equipo».
+
 ## ¿Cómo se extraen las citas bíblicas?
 Supongamos que queremos extraer la palabra "Árbol". Para ello, la herramienta debe de hacer un curl de esta web: "https://leon-dufour.com/palabra/arbol". Dicha web debe de ser definida como parámetro de entrada por parte del usuario o, bien, que el usuario ponga la palabra directamente (se puede comprobar con un grep que el input no empieza por "http"). Con el HTML que se obtiene, se debe de ir al div data-panel="citas".
 

@@ -84,15 +84,23 @@ STYLES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
   </fills>
-  <borders count="1">
+  <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"/>
+      <right style="thin"/>
+      <top style="thin"/>
+      <bottom style="thin"/>
+      <diagonal/>
+    </border>
   </borders>
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
-  <cellXfs count="2">
+  <cellXfs count="3">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
   </cellXfs>
   <cellStyles count="1">
     <cellStyle name="Normal" xfId="0" builtinId="0"/>
@@ -142,11 +150,10 @@ def _row_xml(
     row_number: int, values: Sequence[Optional[str]], header: bool
 ) -> str:
     cells = []
+    style = 1 if header else 2
     for index, value in enumerate(values, start=1):
-        if value is None or value == "":
-            continue
         reference = f"{column_letter(index)}{row_number}"
-        cells.append(_cell(reference, value, style=1 if header else None))
+        cells.append(_cell(reference, value or "", style=style))
     return f'<row r="{row_number}">' + "".join(cells) + "</row>"
 
 
