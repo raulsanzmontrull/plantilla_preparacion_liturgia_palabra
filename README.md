@@ -83,23 +83,23 @@ release del tag. También se puede lanzar manualmente desde la pestaña
 
 ## Columnas del Excel
 
-| Columna | Contenido |
-| --- | --- |
-| A | **Históricos** |
-| B | Votación personal (vacía) |
-| C | Suma de votaciones (vacía) |
-| D | **Profetas** |
-| E | Votación personal (vacía) |
-| F | Suma de votaciones (vacía) |
-| G | **Cartas** |
-| H | Votación personal (vacía) |
-| I | Suma de votaciones (vacía) |
-| J | **Evangelios** |
-| K | Votación personal (vacía) |
-| L | Suma de votaciones (vacía) |
+| Columna | Encabezado | Contenido |
+| --- | --- | --- |
+| A | **Históricos** | Citas históricas |
+| B | **P** | Votación personal (vacía) |
+| C | **T** | Suma de votaciones (vacía) |
+| D | **Profetas** | Citas proféticas |
+| E | **P** | Votación personal (vacía) |
+| F | **T** | Suma de votaciones (vacía) |
+| G | **Cartas** | Citas de las cartas |
+| H | **P** | Votación personal (vacía) |
+| I | **T** | Suma de votaciones (vacía) |
+| J | **Evangelios** | Citas evangélicas |
+| K | **P** | Votación personal (vacía) |
+| L | **T** | Suma de votaciones (vacía) |
 
-Las columnas de votación y suma no tienen encabezado, tal como se describe en
-`detalles.md`. La primera fila queda fija al desplazarse.
+Las columnas `P` y `T` son más estrechas que las de citas para ahorrar espacio.
+La primera fila queda fija al desplazarse.
 
 ## Reglas aplicadas
 

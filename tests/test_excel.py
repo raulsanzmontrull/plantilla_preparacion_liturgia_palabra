@@ -69,7 +69,7 @@ class BuildWorkbookTests(unittest.TestCase):
         self.assertEqual(cells["J2"], "Mt 24,30-35")
         self.assertEqual(cells["J3"], "Mt 24,36")
 
-    def test_vote_and_sum_columns_have_no_header(self):
+    def test_personal_and_total_columns_have_headers(self):
         categories = {
             "Históricos": ["Gen 1,11s"],
             "Profetas": [],
@@ -81,8 +81,31 @@ class BuildWorkbookTests(unittest.TestCase):
             build_workbook(categories, path)
             cells = cells_by_reference(read_sheet(path))
 
-        for ref in ["B1", "C1", "E1", "F1", "H1", "I1", "K1", "L1"]:
-            self.assertNotIn(ref, cells)
+        for column in ["B", "E", "H", "K"]:
+            self.assertEqual(cells[f"{column}1"], "P")
+        for column in ["C", "F", "I", "L"]:
+            self.assertEqual(cells[f"{column}1"], "T")
+
+    def test_column_widths_are_compact(self):
+        categories = {
+            "Históricos": ["Gen 1,11s"],
+            "Profetas": [],
+            "Cartas": [],
+            "Evangelios": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "salida.xlsx"
+            build_workbook(categories, path)
+            root = ET.fromstring(read_sheet(path))
+
+        widths = {
+            int(column.attrib["min"]): float(column.attrib["width"])
+            for column in root.findall(".//m:col", NS)
+        }
+        for column in [1, 4, 7, 10]:
+            self.assertEqual(widths[column], 24)
+        for column in [2, 3, 5, 6, 8, 9, 11, 12]:
+            self.assertEqual(widths[column], 6)
 
     def test_escapes_xml_special_characters(self):
         categories = {

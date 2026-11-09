@@ -21,7 +21,22 @@ CATEGORY_COLUMNS = {
     books.EVANGELIOS: 10,
 }
 
-COLUMN_WIDTHS = [28, 12, 12, 28, 12, 12, 28, 12, 12, 28, 12, 12]
+COLUMN_HEADERS = {
+    1: books.HISTORICOS,
+    2: "P",
+    3: "T",
+    4: books.PROFETAS,
+    5: "P",
+    6: "T",
+    7: books.CARTAS,
+    8: "P",
+    9: "T",
+    10: books.EVANGELIOS,
+    11: "P",
+    12: "T",
+}
+
+COLUMN_WIDTHS = [24, 6, 6, 24, 6, 6, 24, 6, 6, 24, 6, 6]
 
 CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -115,9 +130,9 @@ def _sheet_xml(categories: Dict[str, List[str]]) -> str:
     last_row = max(longest + 1, 1)
 
     header_cells = []
-    for category, column in CATEGORY_COLUMNS.items():
+    for column in sorted(COLUMN_HEADERS):
         reference = f"{column_letter(column)}1"
-        header_cells.append(_cell(reference, category, style=1))
+        header_cells.append(_cell(reference, COLUMN_HEADERS[column], style=1))
     rows = ['<row r="1">' + "".join(header_cells) + "</row>"]
 
     for index in range(longest):
