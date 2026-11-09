@@ -80,6 +80,26 @@ El flujo ejecuta los tests, compila los tres ejecutables y los adjunta a la
 release del tag. También se puede lanzar manualmente desde la pestaña
 **Actions**; en ese caso los binarios quedan como artefactos descargables.
 
+## Generar el Excel desde GitHub Actions
+
+Si no quieres instalar nada, puedes generar la plantilla directamente desde
+GitHub:
+
+1. Abre la pestaña **Actions** del repositorio.
+2. Selecciona el workflow **generate-excel**.
+3. Pulsa **Run workflow**, escribe la palabra o URL en `entrada` y marca
+   `ordenar` si quieres que las citas se ordenen alfabéticamente.
+4. Al terminar la ejecución, descarga el artifact **liturgia-excel**.
+5. Descomprime el archivo: dentro estará el `.xlsx` generado.
+
+Los artifacts se conservan durante 30 días. Para lanzar un workflow manualmente
+hace falta tener permisos de escritura sobre el repositorio.
+
+Los usuarios externos sin permisos de escritura no pueden lanzar el workflow en
+este repositorio. Como alternativa, pueden hacer un **fork** y ejecutar
+`generate-excel` desde la pestaña Actions de su propio fork. Para descargar los
+artifacts es necesario tener una cuenta de GitHub e iniciar sesión.
+
 ## Por qué el versionado no es un problema
 
 - **Cero dependencias externas en tiempo de ejecución**: todo usa la biblioteca

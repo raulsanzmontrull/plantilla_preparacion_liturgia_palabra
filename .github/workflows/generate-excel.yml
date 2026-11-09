@@ -1,0 +1,43 @@
+name: generate-excel
+
+on:
+  workflow_dispatch:
+    inputs:
+      entrada:
+        description: "Palabra o URL completa de leon-dufour.com"
+        required: true
+        type: string
+      ordenar:
+        description: "Ordenar alfabéticamente las citas de cada columna"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generar Excel
+        env:
+          ENTRADA: ${{ inputs.entrada }}
+          ORDENAR: ${{ inputs.ordenar }}
+        run: |
+          args=(python -m liturgia "$ENTRADA")
+          if [ "$ORDENAR" = "true" ]; then
+            args+=(--ordenar)
+          fi
+          "${args[@]}"
+      - name: Publicar Excel como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: liturgia-excel
+          path: "*.xlsx"
+          if-no-files-found: error
+          retention-days: 30
