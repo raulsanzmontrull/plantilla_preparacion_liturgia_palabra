@@ -98,8 +98,22 @@ release del tag. También se puede lanzar manualmente desde la pestaña
 | K | **P** | Votación personal (vacía) |
 | L | **T** | Suma de votaciones (vacía) |
 
-Las columnas `P` y `T` son más estrechas que las de citas para ahorrar espacio.
-La primera fila queda fija al desplazarse.
+Los anchos de columna se ajustan automáticamente al contenido más largo,
+incluidos los encabezados. Las columnas `P` y `T` quedan estrechas porque solo
+contienen votos. La primera fila queda fija al desplazarse.
+
+### Pestaña «Equipo»
+
+El libro incluye una segunda hoja llamada **Equipo** para repartir las tareas
+de la celebración:
+
+| Fila | Contenido |
+| --- | --- |
+| 1 | Monición ambiental (celda combinada) |
+| 3 | Cabeceras: **Lectura**, **Cita bíblica más votada**, **Monición** y **Proclamación** |
+| 4-7 | Una fila por categoría: Históricos, Profetas, Cartas y Evangelios |
+
+Las tres primeras filas quedan fijas al desplazarse.
 
 ## Reglas aplicadas
 

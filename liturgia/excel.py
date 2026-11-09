@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Set, Union
 from xml.sax.saxutils import escape
 
 from . import books
@@ -36,7 +36,8 @@ COLUMN_HEADERS = {
     12: "T",
 }
 
-COLUMN_WIDTHS = [24, 6, 6, 24, 6, 6, 24, 6, 6, 24, 6, 6]
+MIN_COLUMN_WIDTH = 4.0
+COLUMN_PADDING = 2
 
 CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -44,6 +45,7 @@ CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>
 """
@@ -58,6 +60,7 @@ WORKBOOK = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets>
     <sheet name="Liturgia" sheetId="1" r:id="rId1"/>
+    <sheet name="Equipo" sheetId="2" r:id="rId2"/>
   </sheets>
 </workbook>
 """
@@ -65,7 +68,8 @@ WORKBOOK = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 WORKBOOK_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>
 """
 
@@ -116,46 +120,127 @@ def _cell(reference: str, value: str, style: Optional[int] = None) -> str:
     )
 
 
-def _cols_xml() -> str:
+def _auto_width(values: Sequence[Optional[str]]) -> float:
+    longest = max(
+        (len(value) for value in values if value is not None),
+        default=0,
+    )
+    return max(MIN_COLUMN_WIDTH, float(longest + COLUMN_PADDING))
+
+
+def _cols_xml(widths: Sequence[float]) -> str:
     columns = []
-    for index, width in enumerate(COLUMN_WIDTHS, start=1):
+    for index, width in enumerate(widths, start=1):
         columns.append(
-            f'<col min="{index}" max="{index}" width="{width}" customWidth="1"/>'
+            f'<col min="{index}" max="{index}" width="{width:g}" customWidth="1"/>'
         )
     return "<cols>" + "".join(columns) + "</cols>"
 
 
-def _sheet_xml(categories: Dict[str, List[str]]) -> str:
-    longest = max((len(values) for values in categories.values()), default=0)
-    last_row = max(longest + 1, 1)
+def _row_xml(
+    row_number: int, values: Sequence[Optional[str]], header: bool
+) -> str:
+    cells = []
+    for index, value in enumerate(values, start=1):
+        if value is None or value == "":
+            continue
+        reference = f"{column_letter(index)}{row_number}"
+        cells.append(_cell(reference, value, style=1 if header else None))
+    return f'<row r="{row_number}">' + "".join(cells) + "</row>"
 
-    header_cells = []
-    for column in sorted(COLUMN_HEADERS):
-        reference = f"{column_letter(column)}1"
-        header_cells.append(_cell(reference, COLUMN_HEADERS[column], style=1))
-    rows = ['<row r="1">' + "".join(header_cells) + "</row>"]
 
-    for index in range(longest):
-        row_number = index + 2
-        cells = []
-        for category, column in CATEGORY_COLUMNS.items():
-            values = categories.get(category, [])
-            if index < len(values):
-                reference = f"{column_letter(column)}{row_number}"
-                cells.append(_cell(reference, values[index]))
-        rows.append(f'<row r="{row_number}">' + "".join(cells) + "</row>")
+def _worksheet_xml(
+    rows: Sequence[Sequence[Optional[str]]],
+    header_rows: Set[int],
+    freeze_rows: int = 0,
+    merges: Sequence[str] = (),
+) -> str:
+    column_count = max((len(row) for row in rows), default=1)
+    padded_rows = [
+        list(row) + [None] * (column_count - len(row)) for row in rows
+    ]
+    widths = [
+        _auto_width([row[index] for row in padded_rows])
+        for index in range(column_count)
+    ]
+    last_row = max(len(padded_rows), 1)
+    last_column = column_letter(column_count)
+
+    sheet_views = ""
+    if freeze_rows > 0:
+        sheet_views = (
+            "<sheetViews><sheetView workbookViewId=\"0\">"
+            f'<pane ySplit="{freeze_rows}" topLeftCell="A{freeze_rows + 1}" '
+            'activePane="bottomLeft" state="frozen"/>'
+            "</sheetView></sheetViews>"
+        )
+
+    rows_xml = "".join(
+        _row_xml(row_number, row, row_number in header_rows)
+        for row_number, row in enumerate(padded_rows, start=1)
+    )
+
+    merges_xml = ""
+    if merges:
+        merge_cells = "".join(
+            f'<mergeCell ref="{reference}"/>' for reference in merges
+        )
+        merges_xml = f'<mergeCells count="{len(merges)}">{merge_cells}</mergeCells>'
 
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        "<sheetViews><sheetView workbookViewId=\"0\">"
-        '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
-        "</sheetView></sheetViews>"
-        f'<dimension ref="A1:L{last_row}"/>'
-        + _cols_xml()
+        f'<dimension ref="A1:{last_column}{last_row}"/>'
+        + sheet_views
+        + _cols_xml(widths)
         + "<sheetData>"
-        + "".join(rows)
-        + "</sheetData></worksheet>"
+        + rows_xml
+        + "</sheetData>"
+        + merges_xml
+        + "</worksheet>"
+    )
+
+
+def _liturgia_rows(categories: Dict[str, List[str]]) -> List[List[Optional[str]]]:
+    longest = max((len(values) for values in categories.values()), default=0)
+    rows: List[List[Optional[str]]] = [
+        [COLUMN_HEADERS[column] for column in range(1, 13)]
+    ]
+    for index in range(longest):
+        row: List[Optional[str]] = [None] * 12
+        for category, column in CATEGORY_COLUMNS.items():
+            values = categories.get(category, [])
+            if index < len(values):
+                row[column - 1] = values[index]
+        rows.append(row)
+    return rows
+
+
+def _equipo_rows() -> List[List[Optional[str]]]:
+    rows: List[List[Optional[str]]] = [
+        ["Monición ambiental", None, None, None],
+        [None, None, None, None],
+        ["Lectura", "Cita bíblica más votada", "Monición", "Proclamación"],
+    ]
+    for category in books.CATEGORIES:
+        rows.append([category, None, None, None])
+    return rows
+
+
+def _sheet_xml(categories: Dict[str, List[str]]) -> str:
+    return _worksheet_xml(
+        _liturgia_rows(categories),
+        header_rows={1},
+        freeze_rows=1,
+    )
+
+
+def _equipo_sheet_xml() -> str:
+    return _worksheet_xml(
+        _equipo_rows(),
+        header_rows={1, 3},
+        freeze_rows=3,
+        merges=("B1:D1",),
     )
 
 
@@ -170,6 +255,7 @@ def write_xlsx(
         "xl/_rels/workbook.xml.rels": WORKBOOK_RELS,
         "xl/styles.xml": STYLES,
         "xl/worksheets/sheet1.xml": _sheet_xml(categories),
+        "xl/worksheets/sheet2.xml": _equipo_sheet_xml(),
     }
 
     if hasattr(target, "writestr"):
