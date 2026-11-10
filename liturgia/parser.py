@@ -78,6 +78,75 @@ def parse_html(html: str) -> CitasPage:
     )
 
 
+class _WordTextExtractor(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.div_depth = 0
+        self.panel_depth: Optional[int] = None
+        self.article_depth: Optional[int] = None
+        self._paragraph: Optional[List[str]] = None
+        self._paragraph_in_article = False
+        self.article_paragraphs: List[str] = []
+        self.panel_paragraphs: List[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "div":
+            if self.panel_depth is None and attributes.get("data-panel") == "texto":
+                self.panel_depth = self.div_depth
+            if (
+                self.panel_depth is not None
+                and self.article_depth is None
+                and attributes.get("id") == "article-text"
+            ):
+                self.article_depth = self.div_depth
+            self.div_depth += 1
+            return
+
+        if self.panel_depth is None or self._paragraph is not None:
+            return
+        if tag == "p":
+            self._paragraph = []
+            self._paragraph_in_article = self.article_depth is not None
+
+    def handle_data(self, data):
+        if self._paragraph is not None:
+            self._paragraph.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "p" and self._paragraph is not None:
+            text = " ".join("".join(self._paragraph).split())
+            if text:
+                self.panel_paragraphs.append(text)
+                if self._paragraph_in_article:
+                    self.article_paragraphs.append(text)
+            self._paragraph = None
+            self._paragraph_in_article = False
+            return
+
+        if tag != "div":
+            return
+        self.div_depth -= 1
+        if self.article_depth is not None and self.div_depth == self.article_depth:
+            self.article_depth = None
+        if self.panel_depth is not None and self.div_depth == self.panel_depth:
+            self.panel_depth = None
+
+
+def extract_word_text(html: str) -> List[str]:
+    """Extrae los párrafos del artículo de la palabra.
+
+    Se usa el bloque ``#article-text`` dentro de ``div[data-panel="texto"]``.
+    Si no existe, se devuelven los párrafos del panel de texto.
+    """
+
+    extractor = _WordTextExtractor()
+    extractor.feed(html)
+    extractor.close()
+
+    return extractor.article_paragraphs or extractor.panel_paragraphs
+
+
 def extract_citations(html: str) -> Dict[str, List[str]]:
     page = parse_html(html)
     result: Dict[str, List[str]] = {category: [] for category in books.CATEGORIES}

@@ -255,6 +255,49 @@ class BuildWorkbookTests(unittest.TestCase):
         self.assertEqual(widths[3], len("Monición") + 2)
         self.assertEqual(widths[4], len("Proclamación") + 2)
 
+    def test_text_sheet_is_optional(self):
+        categories = {
+            "Históricos": [],
+            "Profetas": [],
+            "Cartas": [],
+            "Evangelios": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "salida.xlsx"
+            build_workbook(categories, path)
+            with zipfile.ZipFile(path) as archive:
+                names = set(archive.namelist())
+
+        self.assertNotIn("xl/worksheets/sheet3.xml", names)
+
+    def test_adds_text_sheet_when_requested(self):
+        categories = {
+            "Históricos": [],
+            "Profetas": [],
+            "Cartas": [],
+            "Evangelios": [],
+        }
+        paragraphs = [
+            "El árbol es símbolo de vida.",
+            "1. El árbol de la vida.",
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "salida.xlsx"
+            build_workbook(categories, path, text=paragraphs)
+            with zipfile.ZipFile(path) as archive:
+                names = set(archive.namelist())
+                workbook = archive.read("xl/workbook.xml").decode("utf-8")
+                sheet = archive.read("xl/worksheets/sheet3.xml").decode("utf-8")
+                for name in names:
+                    if name.endswith(".xml") or name.endswith(".rels"):
+                        ET.fromstring(archive.read(name))
+
+        self.assertIn("xl/worksheets/sheet3.xml", names)
+        self.assertIn('name="Texto"', workbook)
+        cells = cells_by_reference(sheet)
+        self.assertEqual(cells["A1"], "El árbol es símbolo de vida.")
+        self.assertEqual(cells["A2"], "1. El árbol de la vida.")
+
     def test_escapes_xml_special_characters(self):
         categories = {
             "Históricos": ["Gen 1,1 <&>"],

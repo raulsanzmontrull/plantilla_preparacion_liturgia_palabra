@@ -80,6 +80,58 @@ class MainTests(unittest.TestCase):
             with zipfile.ZipFile(output) as archive:
                 self.assertIn("xl/worksheets/sheet1.xml", archive.namelist())
 
+    def test_texto_flag_adds_text_sheet(self):
+        html = (
+            '<div data-panel="texto"><div id="article-text">'
+            "<p>El árbol es símbolo de vida.</p>"
+            "</div></div>"
+            '<div data-panel="citas">'
+            '<button data-citas=\'{"historicos":["Gen 1,1"]}\'>'
+            "</button></div>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp) / "entrada.html"
+            fixture.write_text(html, encoding="utf-8")
+            output = Path(tmp) / "salida.xlsx"
+            code, _, stderr = run_main(
+                [
+                    "arbol",
+                    "--html",
+                    str(fixture),
+                    "-o",
+                    str(output),
+                    "--texto",
+                ]
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(stderr, "")
+            with zipfile.ZipFile(output) as archive:
+                self.assertIn("xl/worksheets/sheet3.xml", archive.namelist())
+                workbook = archive.read("xl/workbook.xml").decode("utf-8")
+                sheet = archive.read("xl/worksheets/sheet3.xml")
+
+            root = ET.fromstring(sheet)
+            cells = {
+                cell.attrib["r"]: cell.findtext(".//m:t", default="", namespaces=NS)
+                for cell in root.findall(".//m:c", NS)
+            }
+
+        self.assertIn('name="Texto"', workbook)
+        self.assertEqual(cells["A1"], "El árbol es símbolo de vida.")
+
+    def test_text_sheet_is_not_added_by_default(self):
+        fixture = FIXTURES / "arbol.html"
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "arbol.xlsx"
+            code, _, _ = run_main(
+                ["arbol", "--html", str(fixture), "-o", str(output)]
+            )
+            with zipfile.ZipFile(output) as archive:
+                names = set(archive.namelist())
+
+        self.assertEqual(code, 0)
+        self.assertNotIn("xl/worksheets/sheet3.xml", names)
+
     def test_ordenar_flag_sorts_citations_alphabetically(self):
         html = (
             '<div data-panel="citas">'

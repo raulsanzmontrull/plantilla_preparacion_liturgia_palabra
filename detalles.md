@@ -38,8 +38,11 @@ De forma opcional, el documento se puede exportar también a PDF. El PDF debe in
 - La tabla con las citas de la primera pestaña del Excel.
 - Debajo, la tabla de la pestaña «Equipo».
 
+## Pestaña de texto
+De forma opcional (con `--texto`), el Excel incluye una pestaña adicional llamada «Texto» con los párrafos del artículo de la palabra, para poder consultar su definición. Esta pestaña no se incluye por defecto.
+
 ## Generación masiva
-De forma opcional (con `--todas`), la herramienta descarga el índice del vocabulario, extrae los enlaces `/palabra/<slug>` y genera un documento por cada palabra. La carpeta de destino se indica con `--carpeta` (por defecto, `salida`). Sin `--pdf` se generan archivos `.xlsx`; con `--pdf` se generan únicamente archivos `.pdf`. Si una palabra falla, se continúa con las demás y el comando termina con código de salida 1.
+De forma opcional (con `--todas`), la herramienta descarga el índice del vocabulario, extrae los enlaces `/palabra/<slug>` y genera un documento por cada palabra. La carpeta de destino se indica con `--carpeta` (por defecto, `salida`). Sin `--pdf` se generan archivos `.xlsx` (con `--texto`, cada uno incluye la pestaña de definición); con `--pdf` se generan únicamente archivos `.pdf`. Si una palabra falla, se continúa con las demás y el comando termina con código de salida 1.
 
 ## ¿Cómo se extraen las citas bíblicas?
 Supongamos que queremos extraer la palabra "Árbol". Para ello, la herramienta debe de hacer un curl de esta web: "https://leon-dufour.com/palabra/arbol". Dicha web debe de ser definida como parámetro de entrada por parte del usuario o, bien, que el usuario ponga la palabra directamente (se puede comprobar con un grep que el input no empieza por "http"). Con el HTML que se obtiene, se debe de ir al div data-panel="citas".

@@ -38,18 +38,15 @@ COLUMN_HEADERS = {
 }
 
 MIN_COLUMN_WIDTH = 4.0
+MAX_COLUMN_WIDTH = 100.0
 COLUMN_PADDING = 2
 
-CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-</Types>
-"""
+WORKSHEET_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
+)
+WORKSHEET_RELATIONSHIP = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+)
 
 ROOT_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -57,22 +54,59 @@ ROOT_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </Relationships>
 """
 
-WORKBOOK = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets>
-    <sheet name="Liturgia" sheetId="1" r:id="rId1"/>
-    <sheet name="Equipo" sheetId="2" r:id="rId2"/>
-  </sheets>
-</workbook>
-"""
 
-WORKBOOK_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>
-"""
+def _content_types_xml(has_text: bool) -> str:
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+        '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+        '  <Default Extension="xml" ContentType="application/xml"/>',
+        '  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+        f'  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="{WORKSHEET_CONTENT_TYPE}"/>',
+        f'  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="{WORKSHEET_CONTENT_TYPE}"/>',
+    ]
+    if has_text:
+        parts.append(
+            f'  <Override PartName="/xl/worksheets/sheet3.xml" ContentType="{WORKSHEET_CONTENT_TYPE}"/>'
+        )
+    parts.extend(
+        [
+            '  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
+            "</Types>",
+        ]
+    )
+    return "\n".join(parts) + "\n"
+
+
+def _workbook_xml(has_text: bool) -> str:
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        "  <sheets>",
+        '    <sheet name="Liturgia" sheetId="1" r:id="rId1"/>',
+        '    <sheet name="Equipo" sheetId="2" r:id="rId2"/>',
+    ]
+    if has_text:
+        parts.append('    <sheet name="Texto" sheetId="3" r:id="rId4"/>')
+    parts.extend(["  </sheets>", "</workbook>"])
+    return "\n".join(parts) + "\n"
+
+
+def _workbook_rels_xml(has_text: bool) -> str:
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+        f'  <Relationship Id="rId1" Type="{WORKSHEET_RELATIONSHIP}" Target="worksheets/sheet1.xml"/>',
+        f'  <Relationship Id="rId2" Type="{WORKSHEET_RELATIONSHIP}" Target="worksheets/sheet2.xml"/>',
+        '  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
+    ]
+    if has_text:
+        parts.append(
+            f'  <Relationship Id="rId4" Type="{WORKSHEET_RELATIONSHIP}" Target="worksheets/sheet3.xml"/>'
+        )
+    parts.append("</Relationships>")
+    return "\n".join(parts) + "\n"
+
 
 STYLES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -97,10 +131,11 @@ STYLES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
-  <cellXfs count="3">
+  <cellXfs count="4">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
   </cellXfs>
   <cellStyles count="1">
     <cellStyle name="Normal" xfId="0" builtinId="0"/>
@@ -134,7 +169,10 @@ def _auto_width(values: Sequence[Optional[str]]) -> float:
         (len(value) for value in values if value is not None),
         default=0,
     )
-    return max(MIN_COLUMN_WIDTH, float(longest + COLUMN_PADDING))
+    return min(
+        MAX_COLUMN_WIDTH,
+        max(MIN_COLUMN_WIDTH, float(longest + COLUMN_PADDING)),
+    )
 
 
 def _cols_xml(widths: Sequence[float]) -> str:
@@ -147,10 +185,13 @@ def _cols_xml(widths: Sequence[float]) -> str:
 
 
 def _row_xml(
-    row_number: int, values: Sequence[Optional[str]], header: bool
+    row_number: int,
+    values: Sequence[Optional[str]],
+    header: bool,
+    body_style: int = 2,
 ) -> str:
     cells = []
-    style = 1 if header else 2
+    style = 1 if header else body_style
     for index, value in enumerate(values, start=1):
         reference = f"{column_letter(index)}{row_number}"
         cells.append(_cell(reference, value or "", style=style))
@@ -162,6 +203,7 @@ def _worksheet_xml(
     header_rows: Set[int],
     freeze_rows: int = 0,
     merges: Sequence[str] = (),
+    body_style: int = 2,
 ) -> str:
     column_count = max((len(row) for row in rows), default=1)
     padded_rows = [
@@ -184,7 +226,7 @@ def _worksheet_xml(
         )
 
     rows_xml = "".join(
-        _row_xml(row_number, row, row_number in header_rows)
+        _row_xml(row_number, row, row_number in header_rows, body_style)
         for row_number, row in enumerate(padded_rows, start=1)
     )
 
@@ -266,20 +308,33 @@ def _equipo_sheet_xml() -> str:
     )
 
 
+def _text_sheet_xml(text: Sequence[str]) -> str:
+    rows: List[List[Optional[str]]] = [[paragraph] for paragraph in text if paragraph]
+    return _worksheet_xml(
+        rows,
+        header_rows=set(),
+        body_style=3,
+    )
+
+
 def write_xlsx(
     categories: Dict[str, List[str]],
     target: Union[str, Path, "zipfile.ZipFile"],
     sort_alphabetically: bool = False,
+    text: Optional[Sequence[str]] = None,
 ) -> None:
+    has_text = bool(text)
     parts = {
-        "[Content_Types].xml": CONTENT_TYPES,
+        "[Content_Types].xml": _content_types_xml(has_text),
         "_rels/.rels": ROOT_RELS,
-        "xl/workbook.xml": WORKBOOK,
-        "xl/_rels/workbook.xml.rels": WORKBOOK_RELS,
+        "xl/workbook.xml": _workbook_xml(has_text),
+        "xl/_rels/workbook.xml.rels": _workbook_rels_xml(has_text),
         "xl/styles.xml": STYLES,
         "xl/worksheets/sheet1.xml": _sheet_xml(categories, sort_alphabetically),
         "xl/worksheets/sheet2.xml": _equipo_sheet_xml(),
     }
+    if has_text:
+        parts["xl/worksheets/sheet3.xml"] = _text_sheet_xml(text or [])
 
     if hasattr(target, "writestr"):
         for name, content in parts.items():
@@ -295,5 +350,6 @@ def build_workbook(
     categories: Dict[str, List[str]],
     path: Union[str, Path],
     sort_alphabetically: bool = False,
+    text: Optional[Sequence[str]] = None,
 ) -> None:
-    write_xlsx(categories, path, sort_alphabetically)
+    write_xlsx(categories, path, sort_alphabetically, text)

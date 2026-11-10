@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      texto:
+        description: "Incluir en el Excel una pestaña con el texto de la palabra"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -34,6 +39,7 @@ jobs:
           ENTRADA: ${{ inputs.entrada }}
           ORDENAR: ${{ inputs.ordenar }}
           PDF: ${{ inputs.pdf }}
+          TEXTO: ${{ inputs.texto }}
         run: |
           args=(python -m liturgia "$ENTRADA")
           if [ "$ORDENAR" = "true" ]; then
@@ -41,6 +47,9 @@ jobs:
           fi
           if [ "$PDF" = "true" ]; then
             args+=(--pdf)
+          fi
+          if [ "$TEXTO" = "true" ]; then
+            args+=(--texto)
           fi
           "${args[@]}"
       - name: Publicar documentos como artifact

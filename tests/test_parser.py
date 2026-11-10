@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 
 from liturgia.books import CARTAS, EVANGELIOS, HISTORICOS, PROFETAS
-from liturgia.parser import extract_citations, parse_html
+from liturgia.parser import extract_citations, extract_word_text, parse_html
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -47,6 +47,43 @@ class ParseHtmlTests(unittest.TestCase):
             page.raw_citations,
             ["Gen 3,22", "Is 41,19", "1Pe 2,24", "Mt 24,32"],
         )
+
+
+class ExtractWordTextTests(unittest.TestCase):
+    def test_extracts_paragraphs_from_article_text(self):
+        html = """
+        <div data-panel="texto">
+          <p>Esquema de la palabra «Árbol»:</p>
+          <div id="article-text">
+            <p>El árbol es símbolo de vida <span data-cita="Gen 1,11s">Gen 1,11s</span>.</p>
+            <p class="article-num">1. El árbol de la vida.</p>
+            <p>El Génesis coloca un árbol de la vida.</p>
+          </div>
+        </div>
+        """
+        self.assertEqual(
+            extract_word_text(html),
+            [
+                "El árbol es símbolo de vida Gen 1,11s.",
+                "1. El árbol de la vida.",
+                "El Génesis coloca un árbol de la vida.",
+            ],
+        )
+
+    def test_falls_back_to_all_paragraphs_in_text_panel(self):
+        html = """
+        <div data-panel="texto">
+          <p>Primer párrafo.</p>
+          <p>Segundo párrafo.</p>
+        </div>
+        """
+        self.assertEqual(
+            extract_word_text(html),
+            ["Primer párrafo.", "Segundo párrafo."],
+        )
+
+    def test_returns_empty_list_without_text_panel(self):
+        self.assertEqual(extract_word_text("<div data-panel=\"citas\"></div>"), [])
 
 
 class ExtractCitationsTests(unittest.TestCase):

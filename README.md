@@ -26,7 +26,7 @@ python3 -m liturgia "Acción de gracias" -o accion_de_gracias.xlsx
 ```text
 uso: liturgia-palabra [-h] [-o SALIDA] [--todas] [--carpeta CARPETA]
                       [--html HTML] [--timeout TIMEOUT] [-a] [--pdf]
-                      [--version] [entrada]
+                      [--texto] [--version] [entrada]
 
   entrada              Palabra a consultar o URL completa de leon-dufour.com
   -o, --salida         Ruta del archivo .xlsx de salida
@@ -38,6 +38,8 @@ uso: liturgia-palabra [-h] [-o SALIDA] [--todas] [--carpeta CARPETA]
                        (por defecto se conserva el orden de aparición)
   --pdf                Exporta también el documento a PDF con el mismo nombre
                        que el .xlsx. Con --todas, genera únicamente PDFs
+  --texto              Incluye en el .xlsx una pestaña adicional con el texto
+                       de la palabra. No se añade por defecto
   --version            Muestra la versión de la herramienta
 ```
 
@@ -66,6 +68,16 @@ python3 -m liturgia "Árbol" --pdf
 El PDF incluye el título `PALABRA: Árbol`, la tabla de citas de la primera hoja
 y, debajo, la tabla de la pestaña **Equipo**. También respeta `--ordenar`.
 
+### Pestaña «Texto»
+
+Con `--texto` se añade al `.xlsx` una pestaña **Texto** con los párrafos del
+artículo de la palabra, para poder consultar su definición. La pestaña no se
+incluye por defecto:
+
+```bash
+python3 -m liturgia "Árbol" --texto
+```
+
 ### Generar todas las palabras del vocabulario
 
 Con `--todas` se descarga el índice del vocabulario y se genera un documento por
@@ -76,8 +88,9 @@ cada palabra. La carpeta de destino se indica con `--carpeta` (por defecto,
 python3 -m liturgia --todas --carpeta documentos
 ```
 
-Por defecto se generan archivos `.xlsx`. Si se añade `--pdf`, se generan
-únicamente archivos `.pdf`:
+Por defecto se generan archivos `.xlsx`. Si se añade `--texto`, cada Excel
+incluye además la pestaña **Texto**. Si se añade `--pdf`, se generan únicamente
+archivos `.pdf`:
 
 ```bash
 python3 -m liturgia --todas --pdf --carpeta documentos_pdf
@@ -126,7 +139,8 @@ GitHub:
 2. Selecciona el workflow **generate-excel**.
 3. Pulsa **Run workflow**, escribe la palabra o URL en `entrada` y marca
    `ordenar` si quieres que las citas se ordenen alfabéticamente. Marca `pdf`
-   si además quieres el documento en PDF.
+   si además quieres el documento en PDF o `texto` para incluir la pestaña con
+   la definición de la palabra en el Excel.
 4. Al terminar la ejecución, descarga el artifact **liturgia-excel**.
 5. Descomprime el archivo: dentro estarán el `.xlsx` y, si lo pediste, el
    `.pdf`.

@@ -18,7 +18,7 @@ from .fetch import (
     read_local_html,
     slugify,
 )
-from .parser import extract_citations
+from .parser import extract_citations, extract_word_text
 from .pdf import build_pdf
 
 
@@ -96,6 +96,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--texto",
+        action="store_true",
+        help=(
+            "Incluye en el .xlsx una pestaña adicional con el texto de la palabra. "
+            "No se añade por defecto."
+        ),
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -120,12 +128,15 @@ def _generate_single(args) -> int:
             file=sys.stderr,
         )
 
+    word_text = extract_word_text(html) if args.texto else None
+
     output = Path(args.salida) if args.salida else Path(default_output_name(args.entrada))
     try:
         build_workbook(
             categories,
             output,
             sort_alphabetically=args.ordenar,
+            text=word_text,
         )
     except OSError as error:
         print(f"Error al escribir {output}: {error}", file=sys.stderr)
@@ -201,6 +212,7 @@ def _generate_all(args) -> int:
                     categories,
                     folder / f"{safe_slug}.xlsx",
                     sort_alphabetically=args.ordenar,
+                    text=extract_word_text(html) if args.texto else None,
                 )
         except OSError as error:
             print(f"  Error al escribir {safe_slug}: {error}", file=sys.stderr)
